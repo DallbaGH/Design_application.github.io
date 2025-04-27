@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片压缩</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: #333;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: #555;
+        }
+
+        .download-btn {
+            background-color: #333;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .download-btn:hover {
+            background-color: #555;
+        }
+
+        #downloadAllBtn {
+            margin-top: 10px;
+        }
+
+        #uploadFileNames {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+    <div class="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">图片压缩</h1>
+        <div class="flex flex-col space-y-2 mt-4">
+            <input type="radio" id="highQuality" name="compression" value="0.8" checked>
+            <label for="highQuality">高画质 - 80% 质量</label>
+            <input type="radio" id="mediumQuality" name="compression" value="0.6">
+            <label for="mediumQuality">中等画质 - 60% 质量</label>
+            <input type="radio" id="lowQuality" name="compression" value="0.4">
+            <label for="lowQuality">低画质 - 40% 质量</label>
+        </div>
+        <input type="file" id="imageInput" accept="image/*" multiple class="mb-4">
+        <div id="uploadFileNames" class="mb-4"></div>
+        <button id="downloadAllBtn" class="bg-gray-800 text-white px-4 py-2 rounded w-full hover:bg-gray-900 focus:outline-none focus:ring focus:ring-gray-300 mt-4 hidden">
+            下载所有
+        </button>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const uploadFileNames = document.getElementById('uploadFileNames');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        let compressedFiles = [];
+
+        imageInput.addEventListener('change', async () => {
+            const files = imageInput.files;
+            uploadFileNames.innerHTML = '';
+            compressedFiles = [];
+
+            const compressionQuality = document.querySelector('input[name="compression"]:checked').value;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+
+                reader.onload = async () => {
+                    const img = new Image();
+                    img.src = reader.result;
+
+                    await new Promise((resolve) => {
+                        img.onload = resolve;
+                    });
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', parseFloat(compressionQuality));
+
+                    const byteCharacters = atob(compressedDataUrl.split(',')[1]);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let j = 0; j < byteCharacters.length; j++) {
+                        byteNumbers[j] = byteCharacters.charCodeAt(j);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/jpeg' });
+                    compressedFiles[i] = blob;
+
+                    const fileNameElement = document.createElement('p');
+                    fileNameElement.textContent = file.name;
+                    uploadFileNames.appendChild(fileNameElement);
+
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = '下载';
+                    downloadBtn.classList.add('download-btn');
+                    downloadBtn.addEventListener('click', () => {
+                        const url = URL.createObjectURL(blob);
+                        const fileNameParts = file.name.split('.');
+                        const baseName = fileNameParts.slice(0, -1).join('.');
+                        const extension = fileNameParts[fileNameParts.length - 1];
+                        const newFileName = `${baseName}_S.${extension}`;
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = newFileName;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    });
+                    uploadFileNames.appendChild(downloadBtn);
+                };
+            }
+
+            if (files.length > 1) {
+                downloadAllBtn.classList.remove('hidden');
+            } else {
+                downloadAllBtn.classList.add('hidden');
+            }
+        });
+
+        downloadAllBtn.addEventListener('click', async () => {
+            const files = imageInput.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const compressedFile = compressedFiles[i];
+                if (compressedFile) {
+                    const url = URL.createObjectURL(compressedFile);
+                    const fileNameParts = file.name.split('.');
+                    const baseName = fileNameParts.slice(0, -1).join('.');
+                    const extension = fileNameParts[fileNameParts.length - 1];
+                    const newFileName = `${baseName}_S.${extension}`;
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = newFileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
+    
